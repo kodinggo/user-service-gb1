@@ -1,0 +1,4 @@
+development:
+  dialect: mysql
+  datasource: root:root@tcp(localhost:3306)/user-service-gb1?parseTime=true
+  dir: db/migrations

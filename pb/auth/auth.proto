@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package = "github.com/kodinggo/user-service-gb1/pb/auth";
+
+package pb;
+
+service JWTValidator {
+    rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message ValidateTokenRequest {
+    string token = 1;
+}
+
+// TODO: seperate the Role and User on different file proto
+message Role {
+    int64 id = 1;
+    string name = 2;
+}
+
+message User {
+    int64 id = 1;
+    string name = 2;
+    string email = 3;
+    Role role = 4;
+}
+
+message ValidateTokenResponse {
+    bool valid = 1;
+    User user = 2;
+}

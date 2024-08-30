@@ -1,6 +1,8 @@
 package console
 
 import (
+	"log"
+	"net"
 	"sync"
 
 	"github.com/kodinggo/user-service-gb1/db"
@@ -47,8 +49,8 @@ func httpServer(cmd *cobra.Command, args []string) {
 
 	authGrpc := grpcSvc.NewJWTValidatorServer(cfg.JWT.Secret, authUsecase)
 
-	s := grpc.NewServer()
-	pb.RegisterJWTValidatorServer(s, authGrpc)
+	grpcServer := grpc.NewServer()
+	pb.RegisterJWTValidatorServer(grpcServer, authGrpc)
 
 	JWTMiddleware := middleware.NewJWTMiddleware(authUsecase)
 
@@ -61,7 +63,12 @@ func httpServer(cmd *cobra.Command, args []string) {
 
 	handlerHttp.NewUserHandler(routeGroup, userUsecase, JWTMiddleware.ValidateJWT)
 
-	grpcSvc.NewJWTValidatorServer(cfg.JWT.Secret, authUsecase)
+	grpcPort := "4000" // todo make it env
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		log.Panicf("failed create http listener, error: %v", err)
+	}
+	log.Println("Starting gRPC server at " + grpcPort)
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 2)
@@ -70,6 +77,14 @@ func httpServer(cmd *cobra.Command, args []string) {
 	go func() {
 		defer wg.Done()
 		err := e.Start(":3200")
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := grpcServer.Serve(lis)
 		if err != nil {
 			errCh <- err
 		}

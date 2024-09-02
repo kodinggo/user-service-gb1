@@ -2,6 +2,13 @@
 
 User service kodinggo golang bootcamp 1
 
+## Installation
+```
+make migrate-up
+make tidy
+make run
+```
+
 ## JWT Middleware gRPC Implementation
 1. Clone repo auth-service ini, dan pastikan berjalan dengan baik.
         req := &pb.ValidateTokenRequest{Token: token} 

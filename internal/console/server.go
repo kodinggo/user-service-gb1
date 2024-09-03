@@ -10,6 +10,7 @@ import (
 	grpcSvc "github.com/kodinggo/user-service-gb1/internal/delivery/grpc"
 	handlerHttp "github.com/kodinggo/user-service-gb1/internal/delivery/http"
 	"github.com/kodinggo/user-service-gb1/internal/middleware"
+	"github.com/kodinggo/user-service-gb1/internal/pubsub"
 	"github.com/kodinggo/user-service-gb1/internal/repository"
 	"github.com/kodinggo/user-service-gb1/internal/usecase"
 	pb "github.com/kodinggo/user-service-gb1/pb/auth"
@@ -41,10 +42,15 @@ func httpServer(cmd *cobra.Command, args []string) {
 
 	// redis := db.NewRedis()
 
+	js, err := pubsub.InitJetstream()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
 	userRepo := repository.NewUserRepository(mysql)
 	roleRepo := repository.NewRoleRepository(mysql)
 
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, js)
 	authUsecase := usecase.NewAuthUsecase(cfg.JWT.Secret, userRepo, roleRepo)
 
 	authGrpc := grpcSvc.NewJWTValidatorServer(cfg.JWT.Secret, authUsecase)
@@ -74,6 +80,7 @@ func httpServer(cmd *cobra.Command, args []string) {
 	errCh := make(chan error, 2)
 	wg.Add(2)
 
+	// http server
 	go func() {
 		defer wg.Done()
 		err := e.Start(":3200")
@@ -82,6 +89,7 @@ func httpServer(cmd *cobra.Command, args []string) {
 		}
 	}()
 
+	// grpc server
 	go func() {
 		defer wg.Done()
 		err := grpcServer.Serve(lis)

@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/kodinggo/user-service-gb1/internal/model"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/sirupsen/logrus"
 )
@@ -11,15 +13,18 @@ import (
 type UserUsecase struct {
 	userRepo model.IUserRepository
 	roleRepo model.IRoleRepository
+	js       jetstream.JetStream
 }
 
 func NewUserUsecase(
 	userRepo model.IUserRepository,
 	roleRepo model.IRoleRepository,
+	js jetstream.JetStream,
 ) model.IUserUsecase {
 	return &UserUsecase{
 		userRepo: userRepo,
 		roleRepo: roleRepo,
+		js:       js,
 	}
 }
 
@@ -29,6 +34,18 @@ func (u *UserUsecase) Create(ctx context.Context, user model.User) error {
 	})
 
 	err := u.userRepo.Create(ctx, user)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	data, err := json.Marshal(user)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	_, err = u.js.Publish(ctx, "USER.created", data)
 	if err != nil {
 		log.Error(err)
 		return err
